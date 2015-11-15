@@ -1,0 +1,444 @@
+    #include <xc.h>
+    #pragma config PLLDIV = 1       // PLL Prescaler Selection bits (No prescale (4 MHz oscillator input drives PLL directly))
+    #pragma config CPUDIV = OSC1_PLL2// System Clock Postscaler Selection bits ([Primary Oscillator Src: /1][96 MHz PLL Src: /2])
+    #pragma config USBDIV = 1       // USB Clock Selection bit (used in Full-Speed USB mode only; UCFG:FSEN = 1) (USB clock source comes directly from the primary oscillator block with no postscale)
+
+    // CONFIG1H
+    #pragma config FOSC = XTPLL_XT  // Oscillator Selection bits (XT oscillator, PLL enabled (XTPLL))
+    #pragma config FCMEN = OFF      // Fail-Safe Clock Monitor Enable bit (Fail-Safe Clock Monitor disabled)
+    #pragma config IESO = OFF       // Internal/External Oscillator Switchover bit (Oscillator Switchover mode disabled)
+
+    // CONFIG2L
+    #pragma config PWRT = OFF       // Power-up Timer Enable bit (PWRT disabled)
+    #pragma config BOR = ON         // Brown-out Reset Enable bits (Brown-out Reset enabled in hardware only (SBOREN is disabled))
+    #pragma config BORV = 3         // Brown-out Reset Voltage bits (Minimum setting)
+    #pragma config VREGEN = OFF     // USB Voltage Regulator Enable bit (USB voltage regulator disabled)
+
+    // CONFIG2H
+    #pragma config WDT = OFF        // Watchdog Timer Enable bit (WDT disabled (control is placed on the SWDTEN bit))
+    #pragma config WDTPS = 32768    // Watchdog Timer Postscale Select bits (1:32768)
+
+    // CONFIG3H
+    #pragma config CCP2MX = OFF      // CCP2 MUX bit (CCP2 input/output is multiplexed with RC1)
+    #pragma config PBADEN = ON     // PORTB A/D Enable bit (PORTB<4:0> pins are configured as digital I/O on Reset)
+    #pragma config LPT1OSC = OFF    // Low-Power Timer 1 Oscillator Enable bit (Timer1 configured for higher power operation)
+    #pragma config MCLRE = ON       // MCLR Pin Enable bit (MCLR pin enabled; RE3 input pin disabled)
+
+    // CONFIG4L
+    #pragma config STVREN = ON      // Stack Full/Underflow Reset Enable bit (Stack full/underflow will cause Reset)
+    #pragma config LVP = ON         // Single-Supply ICSP Enable bit (Single-Supply ICSP enabled)
+    #pragma config XINST = OFF      // Extended Instruction Set Enable bit (Instruction set extension and Indexed Addressing mode disabled (Legacy mode))
+
+    // CONFIG5L
+    #pragma config CP0 = OFF        // Code Protection bit (Block 0 (000800-001FFFh) is not code-protected)
+    #pragma config CP1 = OFF        // Code Protection bit (Block 1 (002000-003FFFh) is not code-protected)
+    #pragma config CP2 = OFF        // Code Protection bit (Block 2 (004000-005FFFh) is not code-protected)
+    #pragma config CP3 = OFF        // Code Protection bit (Block 3 (006000-007FFFh) is not code-protected)
+
+    // CONFIG5H
+    #pragma config CPB = OFF        // Boot Block Code Protection bit (Boot block (000000-0007FFh) is not code-protected)
+    #pragma config CPD = OFF        // Data EEPROM Code Protection bit (Data EEPROM is not code-protected)
+
+    // CONFIG6L
+    #pragma config WRT0 = OFF       // Write Protection bit (Block 0 (000800-001FFFh) is not write-protected)
+    #pragma config WRT1 = OFF       // Write Protection bit (Block 1 (002000-003FFFh) is not write-protected)
+    #pragma config WRT2 = OFF       // Write Protection bit (Block 2 (004000-005FFFh) is not write-protected)
+    #pragma config WRT3 = OFF       // Write Protection bit (Block 3 (006000-007FFFh) is not write-protected)
+
+    // CONFIG6H
+    #pragma config WRTC = OFF       // Configuration Register Write Protection bit (Configuration registers (300000-3000FFh) are not write-protected)
+    #pragma config WRTB = OFF       // Boot Block Write Protection bit (Boot block (000000-0007FFh) is not write-protected)
+    #pragma config WRTD = OFF       // Data EEPROM Write Protection bit (Data EEPROM is not write-protected)
+
+    // CONFIG7L
+    #pragma config EBTR0 = OFF      // Table Read Protection bit (Block 0 (000800-001FFFh) is not protected from table reads executed in other blocks)
+    #pragma config EBTR1 = OFF      // Table Read Protection bit (Block 1 (002000-003FFFh) is not protected from table reads executed in other blocks)
+    #pragma config EBTR2 = OFF      // Table Read Protection bit (Block 2 (004000-005FFFh) is not protected from table reads executed in other blocks)
+    #pragma config EBTR3 = OFF      // Table Read Protection bit (Block 3 (006000-007FFFh) is not protected from table reads executed in other blocks)
+
+    // CONFIG7H
+    #pragma config EBTRB = OFF      // Boot Block Table Read Protection bit (Boot block (000000-0007FFh) is not protected from table reads executed in other blocks)
+
+    void init();
+    static volatile unsigned short temp2=0,temp=0,sub_wert=0,v1=0,v2=0,timer3=0,l=0,i=0,feuer=0;
+    static volatile unsigned char rising_edge2=0,rising_edge1=0,wert=0,decr_wert=0;
+    static volatile unsigned int timer_high[6] =
+    {
+        0x0000,0x0000,0x0000,0x0000,
+        0x0000,0x0000
+    };
+
+    static volatile unsigned int timer_low[8] =
+    {
+        0x0000,0x0000,0x0000,0x0000,
+        0x0000,0x0000,0x0000,0x0000
+    };
+
+    static volatile unsigned int lookup[256] = {
+    0x00C0,
+    0x0180,
+    0x0240,
+    0x0300,
+    0x03C0,
+    0x0480,
+    0x0540,
+    0x0600,
+    0x06C0,
+    0x0780,
+    0x0840,
+    0x0900,
+    0x09C0,
+    0x0A80,
+    0x0B6B,
+    0x0C5B,
+    0x0D51,
+    0x0E4D,
+    0x0F4E,
+    0x1055,
+    0x1144,
+    0x1236,
+    0x134B,
+    0x1444,
+    0x1540,
+    0x163F,
+    0x171A,
+    0x181C,
+    0x1922,
+    0x1A2B,
+    0x1B0A,
+    0x1C17,
+    0x1CF7,
+    0x1E09,
+    0x1EEB,
+    0x2000,
+    0x20E4,
+    0x21FD,
+    0x22E2,
+    0x2400,
+    0x24E6,
+    0x25CD,
+    0x26F0,
+    0x27D8,
+    0x28C0,
+    0x29E9,
+    0x2AD2,
+    0x2BBC,
+    0x2CA5,
+    0x2DD5,
+    0x2EC0,
+    0x2FAB,
+    0x3095,
+    0x31CD,
+    0x32B9,
+    0x33A5,
+    0x3491,
+    0x357D,
+    0x3669,
+    0x37AB,
+    0x3898,
+    0x3986,
+    0x3A73,
+    0x3B61,
+    0x3C4E,
+    0x3D9A,
+    0x3E89,
+    0x3F77,
+    0x4066,
+    0x4155,
+    0x4244,
+    0x4333,
+    0x4422,
+    0x457A,
+    0x466B,
+    0x475B,
+    0x484B,
+    0x493C,
+    0x4A2C,
+    0x4B1C,
+    0x4C0D,
+    0x4CFD,
+    0x4DEE,
+    0x4F55,
+    0x5047,
+    0x5139,
+    0x522B,
+    0x531C,
+    0x540E,
+    0x5500,
+    0x55F2,
+    0x56E4,
+    0x57D5,
+    0x58C7,
+    0x59B9,
+    0x5AAB,
+    0x5B9C,
+    0x5D1A,
+    0x5E0D,
+    0x5F00,
+    0x5FF3,
+    0x60E6,
+    0x61DA,
+    0x62CD,
+    0x63C0,
+    0x64B3,
+    0x65A6,
+    0x669A,
+    0x678D,
+    0x6880,
+    0x6973,
+    0x6A66,
+    0x6B5A,
+    0x6C4D,
+    0x6D40,
+    0x6ED8,
+    0x6FCD,
+    0x70C1,
+    0x71B6,
+    0x72AB,
+    0x739F,
+    0x7494,
+    0x7589,
+    0x767D,
+    0x7772,
+    0x7866,
+    0x795B,
+    0x7A50,
+    0x7B44,
+    0x7C39,
+    0x7D2E,
+    0x7E22,
+    0x7F17,
+    0x800B,
+    0x8100,
+    0x81F5,
+    0x82E9,
+    0x83DE,
+    0x84D2,
+    0x85C7,
+    0x86BC,
+    0x87B0,
+    0x88A5,
+    0x8A66,
+    0x8B5C,
+    0x8C52,
+    0x8D49,
+    0x8E3F,
+    0x8F35,
+    0x902B,
+    0x9121,
+    0x9217,
+    0x930D,
+    0x9403,
+    0x94F9,
+    0x95EF,
+    0x96E5,
+    0x97DB,
+    0x98D1,
+    0x99C7,
+    0x9ABD,
+    0x9BB3,
+    0x9CA9,
+    0x9D9F,
+    0x9E95,
+    0x9F8B,
+    0xA081,
+    0xA177,
+    0xA26E,
+    0xA364,
+    0xA45A,
+    0xA550,
+    0xA646,
+    0xA73C,
+    0xA832,
+    0xA928,
+    0xAA1E,
+    0xAB14,
+    0xAC0A,
+    0xAD00,
+    0xADF6,
+    0xAEEC,
+    0xAFE2,
+    0xB0D8,
+    0xB1CE,
+    0xB2C4,
+    0xB3BA,
+    0xB4B0,
+    0xB6B3,
+    0xB7AB,
+    0xB8A2,
+    0xB99A,
+    0xBA91,
+    0xBB89,
+    0xBC80,
+    0xBD77,
+    0xBE6F,
+    0xBF66,
+    0xC05E,
+    0xC155,
+    0xC24D,
+    0xC344,
+    0xC43C,
+    0xC533,
+    0xC62B,
+    0xC722,
+    0xC81A,
+    0xC911,
+    0xCA09,
+    0xCB00,
+    0xCBF7,
+    0xCCEF,
+    0xCDE6,
+    0xCEDE,
+    0xCFD5,
+    0xD0CD,
+    0xD1C4,
+    0xD2BC,
+    0xD3B3,
+    0xD4AB,
+    0xD5A2,
+    0xD69A,
+    0xD791,
+    0xD889,
+    0xD980,
+    0xDA77,
+    0xDB6F,
+    0xDC66,
+    0xDD5E,
+    0xDE55,
+    0xDF4D,
+    0xE044,
+    0xE13C,
+    0xE233,
+    0xE32B,
+    0xE422,
+    0xE51A,
+    0xE611,
+    0xE709,
+    0xE800,
+    0xE8F7,
+    0xE9EF,
+    0xEAE6,
+    0xEBDE,
+    0xECD5,
+    0xEDCD,
+    0xEEC4,
+    0xEFBC,
+    0xF0B3,
+    0xF1AB,
+    0xF2A2,
+    0xF39A,
+    0xF491,
+    0xF589,
+    0xF680
+    };
+
+    void interrupt tc_clrHigh(void) {
+
+        if(PIR1bits.TMR1IF == 1)
+            {
+                PORTBbits.RB0 = 0;
+                feuer = 0;
+                CCPR2L=0xf0;
+                CCPR2H=0xff;
+                TMR1H=0;
+                TMR1L=0;
+                PIR1bits.CCP1IF = 0;
+                PIR1bits.TMR1IF = 0;
+            }
+
+            if(PIR1bits.CCP1IF == 1 )
+            {
+                feuer = 1;
+                TMR1H=0;
+                TMR1L=0;
+                timer_low[7] = timer_low[6];
+                timer_low[6] = timer_low[5];
+                timer_low[5] = timer_low[4];
+                timer_low[4] = timer_low[3];
+                timer_low[3] = timer_low[2];
+                timer_low[2] = timer_low[1];
+                timer_low[1] = timer_low[0];
+
+                temp=timer_high[2];
+                timer_high[5] = timer_high[4];
+                timer_high[4] = timer_high[3];
+                timer_high[3] = timer_high[2];
+                timer_high[2] = timer_high[1];
+                timer_high[1] = timer_high[0];
+                timer_low[0]=temp;
+                timer_high[0]=CCPR1H;
+                for(i=0; i<8; ++i)
+                {
+                    temp2=timer_high[i];
+                    timer3+=temp2<<2;
+                }
+                for(i=0; i<6; ++i)
+                {
+                    temp2=timer_low[i];
+                    timer3+=temp2;
+                }
+                timer3 = timer3 >> 5;
+                sub_wert = lookup[timer3];
+                CCPR2L=sub_wert;
+                CCPR2H=sub_wert>>8;
+                timer3=0;
+                PIR1bits.CCP1IF = 0;
+                PORTBbits.RB0 = 0;
+
+            }
+
+
+        if(PIR2bits.CCP2IF == 1 && feuer == 1)
+        {
+            PORTBbits.RB0 = 1;
+            feuer =0;
+            PIR2bits.CCP2IF = 0;
+        }
+
+    }
+     void main(void)
+     {
+		 init();
+		 CCPR2L=0xff;
+		 CCPR2H=0xff;
+		 ei();
+
+    while(1)
+        {
+        }//end while
+     }//end main
+
+
+
+    void  init()
+    {
+       TRISB = 0xFE;
+       PORTB = 0x00;
+       TRISA = 0xBF;
+       TRISC = 0xFF;
+       LATA =  0x00;
+       LATC =  0x00;
+       OSCCONbits.IRCF2 = 0;
+       OSCCONbits.IRCF1 = 0;
+       OSCCONbits.IRCF0 = 0;
+       TMR1L = 0x00;
+       TMR1H = 0x00;
+       TRISCbits.TRISC2 = 1;
+       CCP1CON = 0b00000101;
+       CCP2CON = 0b00001010;
+       T1CON =  0b00111101;
+       T3CON =  0b00110100;
+       T0CON = 0x00;
+       RCONbits.IPEN = 1;
+       INTCON = 0x40;
+       PIE1 = 0b00000101;
+       IPR1 = 0b00000101;
+       IPR2 = 0x01;
+       PIE2 = 0x01;
+       INTCON2 = 0xf0;
+       INTCON3 = 0x00;
+       ADCON1 = 0x0f;
+    }
+
+
+
